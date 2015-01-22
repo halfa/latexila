@@ -64,9 +64,9 @@ public class MainWindow : Window
             N_("Open the LaTeXila documentation"), on_help_contents },
         { "HelpLatexReference", null, N_("_LaTeX Reference"), null,
             N_("The Kile LaTeX Reference"), on_help_latex_reference },
-        { "HelpDonate", null, N_("_Donate"), null,
-            N_("Donate to demonstrate your appreciation of LaTeXila and help its future development"),
-            on_help_donate },
+        { "HelpFinance", null, "LaTeXila Finance", null,
+            "Donate to demonstrate your appreciation of LaTeXila and help its future development",
+            on_help_finance },
         { "HelpAbout", "help-about", N_("_About"), null,
             N_("About LaTeXila"), on_about_dialog }
     };
@@ -267,6 +267,8 @@ public class MainWindow : Window
         restore_state ();
         show_or_hide_widgets ();
         show ();
+
+        Finance.show_dialog (this, true);
     }
 
     // Force to show icons in the menu.
@@ -1161,17 +1163,9 @@ public class MainWindow : Window
         }
     }
 
-    public void on_help_donate ()
+    public void on_help_finance ()
     {
-        try
-        {
-            string uri = "https://wiki.gnome.org/Apps/LaTeXila/donate";
-            show_uri (this.get_screen (), uri, Gdk.CURRENT_TIME);
-        }
-        catch (Error e)
-        {
-            warning ("Impossible to open the donate page: %s", e.message);
-        }
+        Finance.show_dialog (this, false);
     }
 
     public void on_about_dialog ()

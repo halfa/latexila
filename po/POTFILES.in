@@ -22,6 +22,7 @@ src/document_view.vala
 src/encodings.vala
 src/error_entry.vala
 src/file_browser.vala
+src/finance.vala
 src/latexila_app.vala
 src/latex_menu.vala
 src/liblatexila/latexila-build-job.c

@@ -179,6 +179,7 @@
 
   <schema id="org.gnome.latexila.state" path="/org/gnome/latexila/state/">
     <child schema="org.gnome.latexila.state.window" name="window" />
+    <child schema="org.gnome.latexila.state.dialogs" name="dialogs" />
   </schema>
 
   <schema id="org.gnome.latexila.state.window" path="/org/gnome/latexila/state/window/">
@@ -199,6 +200,19 @@
     </key>
     <key name="structure-paned-position" type="i">
       <default>100</default>
+    </key>
+  </schema>
+
+  <schema id="org.gnome.latexila.state.dialogs" path="/org/gnome/latexila/state/dialogs/">
+    <child schema="org.gnome.latexila.state.dialogs.finance" name="finance" />
+  </schema>
+
+  <schema id="org.gnome.latexila.state.dialogs.finance" path="/org/gnome/latexila/state/dialogs/finance/">
+    <key name="last-shown-date" type="s">
+      <default>''</default>
+    </key>
+    <key name="remind-later" type="b">
+      <default>false</default>
     </key>
   </schema>
 </schemalist>
