@@ -27,6 +27,7 @@ src/document_view.vala
 src/encodings.vala
 src/error_entry.vala
 src/file_browser.vala
+src/finance.vala
 src/latexila.vala
 src/latex_menu.vala
 src/latex_post_processor.vala

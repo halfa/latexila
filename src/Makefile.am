@@ -36,6 +36,7 @@ vala_files =				\
 	encodings.vala			\
 	error_entry.vala		\
 	file_browser.vala		\
+	finance.vala			\
 	latexila.vala			\
 	latex_menu.vala			\
 	latex_post_processor.vala	\
