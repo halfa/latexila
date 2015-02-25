@@ -30,18 +30,11 @@ namespace Finance
             window,
             DialogFlags.DESTROY_WITH_PARENT,
             "_Close", ResponseType.CLOSE,
-            "_Remind me later", ResponseType.YES,
-            "_More information", ResponseType.ACCEPT,
+            "LaTeXila _Fundraiser", ResponseType.ACCEPT,
             null);
 
         dialog.set_resizable (false);
         dialog.set_default_response (ResponseType.ACCEPT);
-
-        Widget close_button = dialog.get_widget_for_response (ResponseType.CLOSE);
-        close_button.tooltip_text = "Do not show again this information.";
-
-        Widget remind_button = dialog.get_widget_for_response (ResponseType.YES);
-        remind_button.tooltip_text = "Show again this information in one month.";
 
         unowned Box content_area = dialog.get_content_area ();
         content_area.set_spacing (6);
@@ -67,16 +60,27 @@ namespace Finance
         label.xalign = 0;
         content_area.add (label);
 
-        label = new Label ("You can see again this information at any time by going to the Help menu.");
-        label.max_width_chars = 60;
-        label.set_line_wrap (true);
-        label.xalign = 0;
-        content_area.add (label);
+        if (startup)
+        {
+            label = new Label ("You can see again this information at any time by going to the Help menu.");
+            label.max_width_chars = 60;
+            label.set_line_wrap (true);
+            label.xalign = 0;
+            content_area.add (label);
+        }
 
         label = new Label ("Thanks!");
         label.xalign = 0;
         content_area.add (label);
 
+        CheckButton remind_later_checkbutton =
+            new CheckButton.with_mnemonic ("_Remind me later (in one month)");
+
+        remind_later_checkbutton.set_active (false);
+        remind_later_checkbutton.margin_top = 12;
+        remind_later_checkbutton.margin_bottom = 6;
+
+        content_area.add (remind_later_checkbutton);
         content_area.show_all ();
 
         while (true)
@@ -92,7 +96,7 @@ namespace Finance
             GLib.Settings settings =
                 new GLib.Settings ("org.gnome.latexila.state.dialogs.finance");
 
-            settings.set_boolean ("remind-later", response == ResponseType.YES);
+            settings.set_boolean ("remind-later", remind_later_checkbutton.get_active ());
             break;
         }
 
