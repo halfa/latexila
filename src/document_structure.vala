@@ -37,6 +37,9 @@ public class DocumentStructure : GLib.Object
     private int _nb_marks = 0;
     private static const string MARK_NAME_PREFIX = "struct_item_";
     private TextMark? _end_document_mark = null;
+    
+    //temporary
+    private CompletionProvider provider = CompletionProvider.get_default();
 
     private StructureModel _model = null;
 
@@ -89,6 +92,10 @@ public class DocumentStructure : GLib.Object
 
     public void parse ()
     {
+		// drop old ref choices.
+		provider.drop_ref_choices();
+		
+		stdout.printf("Starting a new parsing phase\n");
         // reset
         parsing_done = false;
         _model = new StructureModel ();
@@ -291,6 +298,12 @@ public class DocumentStructure : GLib.Object
             return false;
 
         contents = get_markup_contents (line, begin_contents_index, out end_match_index);
+        
+        /* test label */
+        if (type == StructType.LABEL) {
+			provider.set_ref_choices(contents);
+		}
+        
         return contents != null;
     }
 
