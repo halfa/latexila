@@ -302,6 +302,8 @@ public class DocumentTab : Grid
             });
         }
 
+        /* Switch global completion context to current document by refreshing the document structure */ 
+        document.get_structure().notify_label_changed();
         return false;
     }
 
