@@ -107,38 +107,6 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
         return "LaTeX";
     }
     
-    public void set_ref_choices (string content)
-    {
-		CompletionCommand cmd_ref = _commands.get("\\ref");
-		
-		CompletionChoice c = CompletionChoice();
-		c.name = content;
-		
-//		if (cmd_ref.args[0].choices.length < 1)
-//		{
-//			cmd_ref.args[0].choices = {};
-//		}
-		
-		cmd_ref.args[0].choices += c;
-		
-		stdout.printf("--- CompletionProvider ---\n");
-		
-		foreach(CompletionChoice compl in cmd_ref.args[0].choices) {
-			stdout.printf("real choice -> %s\n", compl.name);
-		}
-		
-		_commands["\\ref"] = cmd_ref;
-		
-		stdout.printf("--- ---\n");
-	}
-	
-	public void drop_ref_choices () 
-	{
-		CompletionCommand cmd_ref = _commands.get("\\ref");
-		cmd_ref.args[0].choices = {};
-		_commands["\\ref"] = cmd_ref;
-	}
-
     public SourceCompletionActivation get_activation ()
     {
         var activation = SourceCompletionActivation.USER_REQUESTED;
@@ -981,4 +949,27 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
                 break;
         }
     }
+    
+    public void set_ref_choices (string content)
+    {
+		//Get the CompletionCommand for \ref
+		CompletionCommand cmd_ref = _commands.get("\\ref");
+		
+		//Create a CompletionChoice with the arg "content"
+		CompletionChoice c = CompletionChoice();
+		c.name = content;
+
+		//Put the Copletion Choice in the CompletionArgument 
+		cmd_ref.args[0].choices += c;
+		_commands["\\ref"] = cmd_ref;
+	}
+	
+	public void drop_ref_choices () 
+	{
+		//Brutal method to switch documents
+		CompletionCommand cmd_ref = _commands.get("\\ref");
+		cmd_ref.args[0].choices = {};
+		_commands["\\ref"] = cmd_ref;
+	}
+
 }

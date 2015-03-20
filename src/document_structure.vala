@@ -38,7 +38,6 @@ public class DocumentStructure : GLib.Object
     private static const string MARK_NAME_PREFIX = "struct_item_";
     private TextMark? _end_document_mark = null;
     
-    //temporary
     private CompletionProvider provider = CompletionProvider.get_default();
 
     private StructureModel _model = null;
@@ -95,7 +94,6 @@ public class DocumentStructure : GLib.Object
 		// drop old ref choices.
 		provider.drop_ref_choices();
 		
-		stdout.printf("Starting a new parsing phase\n");
         // reset
         parsing_done = false;
         _model = new StructureModel ();
