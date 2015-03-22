@@ -66,11 +66,11 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
     // contains only environments that have extra info
     private Gee.HashMap<string, CompletionChoice?> _environments;
 
-	//AJOUT
+	//contains the \label completion choices for the \ref command.
+	//key is the absolute path of the parsed file.
 	private Gee.HashMap<string, Gee.HashSet<CompletionChoice?>> 
 	  _labels_from_files = new Gee.HashMap<string, Gee.HashSet<CompletionChoice?>>();
-	//FINAJOUT
-
+	
     // While parsing the XML file, keep track of current command/argument/choice.
     private CompletionCommand _current_command;
     private CompletionArgument _current_arg;
@@ -83,29 +83,31 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
     private SourceCompletionInfo _calltip_window = null;
     private Label _calltip_window_label = null;
 
-	//AJOUT
+	//Used by document_structure instances.
+	//Could be avoided, if the attribute was made public.
 	public Gee.HashMap<string, Gee.HashSet<CompletionChoice?>> get_labels_from_files()
 	{
 		return _labels_from_files;
 	}
 	
-	//Very bad, but a beginning...
+	//Creates the array of completion choices from the HashMap.
+	//Has a bad complexity, considering that this method is called at each new document parsing.
 	public CompletionChoice[] get_all_labels()
 	{
-		//Gee.HashSet<CompletionChoice?> choices;
-		CompletionChoice[] all_labels = {};
+		CompletionChoice[] choices = {};
 		
 		foreach(var entry in _labels_from_files.entries)
 		{
 			foreach(CompletionChoice c in entry.value)
 			{
-				all_labels += c;
+				choices += c;
 			}
 		}
 		
-		return all_labels;
+		return choices;
 	}
 	
+	//Called to update the completion choices provided for the \ref command.
 	public void set_label_completion_choices()
 	{
 		CompletionChoice[] choices = get_all_labels();
@@ -113,7 +115,6 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 		cmd_ref.args[0].choices = choices;
 		_commands["\\ref"] = cmd_ref;
 	}
-	//FINAJOUT
 
     /* CompletionProvider is a singleton */
     private CompletionProvider ()
@@ -985,28 +986,5 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
                 _current_choice.insert_after = text;
                 break;
         }
-    }
-    
-    public void set_ref_choices (string content)
-    {
-		//Get the CompletionCommand for \ref
-		CompletionCommand cmd_ref = _commands.get("\\ref");
-		
-		//Create a CompletionChoice with the arg "content"
-		CompletionChoice c = CompletionChoice();
-		c.name = content;
-
-		//Put the Copletion Choice in the CompletionArgument 
-		cmd_ref.args[0].choices += c;
-		_commands["\\ref"] = cmd_ref;
-	}
-	
-	public void drop_ref_choices () 
-	{
-		//Brutal method to switch documents
-		CompletionCommand cmd_ref = _commands.get("\\ref");
-		cmd_ref.args[0].choices = {};
-		_commands["\\ref"] = cmd_ref;
-	}
-
+    }    
 }
