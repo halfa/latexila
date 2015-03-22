@@ -38,7 +38,7 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
         CompletionChoice[] choices;
     }
 
-    struct CompletionChoice
+    public struct CompletionChoice
     {
         string name;
         string? package;
@@ -66,6 +66,11 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
     // contains only environments that have extra info
     private Gee.HashMap<string, CompletionChoice?> _environments;
 
+	//AJOUT
+	private Gee.HashMap<string, Gee.HashSet<CompletionChoice?>> 
+	  _labels_from_files = new Gee.HashMap<string, Gee.HashSet<CompletionChoice?>>();
+	//FINAJOUT
+
     // While parsing the XML file, keep track of current command/argument/choice.
     private CompletionCommand _current_command;
     private CompletionArgument _current_arg;
@@ -77,6 +82,38 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 
     private SourceCompletionInfo _calltip_window = null;
     private Label _calltip_window_label = null;
+
+	//AJOUT
+	public Gee.HashMap<string, Gee.HashSet<CompletionChoice?>> get_labels_from_files()
+	{
+		return _labels_from_files;
+	}
+	
+	//Very bad, but a beginning...
+	public CompletionChoice[] get_all_labels()
+	{
+		//Gee.HashSet<CompletionChoice?> choices;
+		CompletionChoice[] all_labels = {};
+		
+		foreach(var entry in _labels_from_files.entries)
+		{
+			foreach(CompletionChoice c in entry.value)
+			{
+				all_labels += c;
+			}
+		}
+		
+		return all_labels;
+	}
+	
+	public void set_label_completion_choices()
+	{
+		CompletionChoice[] choices = get_all_labels();
+		CompletionCommand cmd_ref = _commands["\\ref"];
+		cmd_ref.args[0].choices = choices;
+		_commands["\\ref"] = cmd_ref;
+	}
+	//FINAJOUT
 
     /* CompletionProvider is a singleton */
     private CompletionProvider ()

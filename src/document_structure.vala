@@ -40,6 +40,11 @@ public class DocumentStructure : GLib.Object
     
     private CompletionProvider provider = CompletionProvider.get_default();
 
+	//AJOUT
+	private Gee.HashSet<CompletionProvider.CompletionChoice?> 
+	  _label_completion_choices = new Gee.HashSet<CompletionProvider.CompletionChoice?>();
+	//FINAJOUT
+
     private StructureModel _model = null;
 
     private static Regex? _chars_regex = null;
@@ -62,6 +67,46 @@ public class DocumentStructure : GLib.Object
     private static string[] _section_names = null;
 
     public bool parsing_done { get; private set; default = false; }
+
+	//AJOUT	
+	public void drop_label_completion_choices()
+	{
+		_label_completion_choices.clear();
+	}
+	
+	public void add_label_completion_choice(string content)
+	{
+		//CompletionProvider.CompletionChoice[] choices = _label_completion_choices;
+		CompletionProvider.CompletionChoice c = CompletionProvider.CompletionChoice();
+		c.name = content;
+		//choices += c;
+		_label_completion_choices.add(c);
+		//_label_completion_choices = choices;
+	}
+	
+	public void update_label_completion_choices_from_file()
+	{		
+		string file_path = _doc.location.get_parse_name();
+		//Gee.HashMap<string, CompletionProvider.CompletionChoice[]?> labels_from_files = provider.get_labels_from_files();
+		//CompletionProvider.CompletionChoice[] choices = _label_completion_choices;
+		
+		if(!provider.get_labels_from_files().has_key(file_path))
+		{
+			stdout.printf("Pas d'entree %s dans la map. Creation.\n", file_path);
+			provider.get_labels_from_files().@set(file_path, _label_completion_choices);
+		}
+		else
+		{
+			stdout.printf("Entree %s. Maj.\n", file_path);
+			provider.get_labels_from_files()[file_path] = _label_completion_choices;
+		}
+	}
+	
+	public Document get_document()
+	{
+		return _doc;
+	}
+	//FINAJOUT
 
     public DocumentStructure (Document doc)
     {
@@ -89,10 +134,16 @@ public class DocumentStructure : GLib.Object
         }
     }
 
-    public void parse ()
+	public void parse ()
     {
 		// drop old ref choices.
-		provider.drop_ref_choices();
+		//provider.drop_ref_choices();
+		
+		//AJOUTS
+		if(_doc != null) {
+		    stdout.printf("LOCATION : %s\n", _doc.location.get_parse_name());
+		}
+		//FINAJOUTS
 		
         // reset
         parsing_done = false;
@@ -120,6 +171,10 @@ public class DocumentStructure : GLib.Object
     // Parse the document. Returns false if finished, true otherwise.
     private bool parse_impl ()
     {
+		//AJOUT
+		drop_label_completion_choices();
+		//FINAJOUT
+		
         if (_measure_parsing_time)
         {
             if (_timer == null)
@@ -184,6 +239,11 @@ public class DocumentStructure : GLib.Object
             message ("Structure parsing took %f seconds", _timer.elapsed ());
             _timer.reset ();
         }
+
+		//AJOUT
+		update_label_completion_choices_from_file();
+		provider.set_label_completion_choices();
+		//FINAJOUT
 
         parsing_done = true;
         return false;
@@ -299,7 +359,10 @@ public class DocumentStructure : GLib.Object
         
         /* test label */
         if (type == StructType.LABEL) {
-			provider.set_ref_choices(contents);
+			//provider.set_ref_choices(contents);
+			//AJOUT
+			add_label_completion_choice(contents);
+			//FINAJOUT
 		}
         
         return contents != null;
