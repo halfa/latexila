@@ -206,6 +206,7 @@ public class FileBrowser : Grid
         toolbar.insert (get_home_button (), -1);
         toolbar.insert (get_parent_button (), -1);
         toolbar.insert (get_jump_button (), -1);
+        toolbar.insert (get_open_directory_button (), -1);
         toolbar.insert (get_properties_button (), -1);
 
         add (toolbar);
@@ -272,6 +273,31 @@ public class FileBrowser : Grid
         });
 
         return jump_button;
+    }
+
+    private ToolButton get_open_directory_button ()
+    {
+        ToolButton open_directory_button = new ToolButton (null, null);
+        open_directory_button.icon_name = "document-open";
+        open_directory_button.tooltip_text =
+            _("Open the current directory in a file manager");
+
+        open_directory_button.clicked.connect (() =>
+        {
+            return_if_fail (_current_directory != null);
+
+            try
+            {
+                Latexila.utils_show_uri (this.get_screen (),
+                    _current_directory.get_uri (), Gdk.CURRENT_TIME);
+            }
+            catch (Error error)
+            {
+                handle_error (error);
+            }
+        });
+
+        return open_directory_button;
     }
 
     private ToolButton get_properties_button ()
