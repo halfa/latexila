@@ -90,17 +90,20 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 		return _labels_from_files;
 	}
 	
-	//Creates the array of completion choices from the HashMap.
+	//Creates the array of completion choices for the 'current' project only, from the HashMap.
 	//Has a bad complexity, considering that this method is called at each new document parsing.
-	public CompletionChoice[] get_all_labels()
+	public CompletionChoice[] get_all_labels(string dir)
 	{
 		CompletionChoice[] choices = {};
 		
 		foreach(var entry in _labels_from_files.entries)
 		{
-			foreach(CompletionChoice c in entry.value)
+			if(entry.key.has_prefix(dir))
 			{
-				choices += c;
+				foreach(CompletionChoice c in entry.value)
+				{
+					choices += c;
+				}
 			}
 		}
 		
@@ -108,9 +111,10 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 	}
 	
 	//Called to update the completion choices provided for the \ref command.
-	public void set_label_completion_choices()
+	//Populates the choices for the current project only.
+	public void set_label_completion_choices(string dir)
 	{
-		CompletionChoice[] choices = get_all_labels();
+		CompletionChoice[] choices = get_all_labels(dir);
 		CompletionCommand cmd_ref = _commands["\\ref"];
 		cmd_ref.args[0].choices = choices;
 		_commands["\\ref"] = cmd_ref;

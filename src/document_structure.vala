@@ -79,6 +79,17 @@ public class DocumentStructure : GLib.Object
 		_label_completion_choices.add(c);
 	}
 	
+	//Returns the path of the enclosing directory for this document.
+	//Used to filter the completion choices.
+	public string find_directory()
+	{
+		string path = _doc.location.get_parse_name();
+		string base_name = _doc.location.get_basename();
+		string dir = path.replace("/"+base_name, "");
+		
+		return dir;
+	}
+	
 	//Updates the label completion choices of the completion provider, for this document.
 	public void update_label_completion_choices_from_file()
 	{		
@@ -219,7 +230,7 @@ public class DocumentStructure : GLib.Object
 		//Updates the label compleiton choices of the completion provider.
 		//Recreates the array of completion choices for the \ref command.
 		update_label_completion_choices_from_file();
-		provider.set_label_completion_choices();
+		provider.set_label_completion_choices(find_directory());
 		
         parsing_done = true;
         return false;
