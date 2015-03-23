@@ -69,6 +69,10 @@ public class DocumentStructure : GLib.Object
 
 	public void drop_label_completion_choices()
 	{
+		//Notifies the CompletionProvider that the label completion choices
+		//are being updated.
+		provider.set_labels_modified(true);
+		provider.set_last_dir(find_directory());
 		_label_completion_choices.clear();
 	}
 	
@@ -228,9 +232,7 @@ public class DocumentStructure : GLib.Object
         }
 
 		//Updates the label compleiton choices of the completion provider.
-		//Recreates the array of completion choices for the \ref command.
 		update_label_completion_choices_from_file();
-		provider.set_label_completion_choices(find_directory());
 		
         parsing_done = true;
         return false;

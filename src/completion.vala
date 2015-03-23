@@ -71,6 +71,12 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 	private Gee.HashMap<string, Gee.HashSet<CompletionChoice?>> 
 	  _labels_from_files = new Gee.HashMap<string, Gee.HashSet<CompletionChoice?>>();
 	
+	//Boolean used to update the label completion choices only when relevant.
+	//String used to filter only the relevant completion choices for the 'current' document.
+	//We gain a lot of efficiency compared to the last version.
+	private bool _labels_modified = false;
+	private string _last_dir = "";
+	
     // While parsing the XML file, keep track of current command/argument/choice.
     private CompletionCommand _current_command;
     private CompletionArgument _current_arg;
@@ -91,7 +97,6 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 	}
 	
 	//Creates the array of completion choices for the 'current' project only, from the HashMap.
-	//Has a bad complexity, considering that this method is called at each new document parsing.
 	public CompletionChoice[] get_all_labels(string dir)
 	{
 		CompletionChoice[] choices = {};
@@ -112,12 +117,26 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
 	
 	//Called to update the completion choices provided for the \ref command.
 	//Populates the choices for the current project only.
-	public void set_label_completion_choices(string dir)
+	public void update_label_completion_choices()
 	{
-		CompletionChoice[] choices = get_all_labels(dir);
-		CompletionCommand cmd_ref = _commands["\\ref"];
-		cmd_ref.args[0].choices = choices;
-		_commands["\\ref"] = cmd_ref;
+		if(_last_dir != "")
+		{
+			CompletionChoice[] choices = get_all_labels(_last_dir);
+			CompletionCommand cmd_ref = _commands["\\ref"];
+			cmd_ref.args[0].choices = choices;
+			_commands["\\ref"] = cmd_ref;
+			set_labels_modified(false);
+		}
+	}
+	
+	public void set_labels_modified(bool b)
+	{
+		_labels_modified = b;
+	}
+	
+	public void set_last_dir(string dir)
+	{
+		_last_dir = dir;
 	}
 
     /* CompletionProvider is a singleton */
@@ -210,7 +229,12 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
     public void populate (SourceCompletionContext context)
     {
         TextIter iter;
-
+		
+		//If the label completion choices were modified, even for other projects, 
+		//updates the completion choices for the \ref command.
+		if(_labels_modified)
+			update_label_completion_choices();
+		
         if (!context.get_iter (out iter))
         {
             show_no_proposals (context);

@@ -122,6 +122,9 @@ public class Document : Gtk.SourceBuffer
                 .printf (location.get_parse_name ());
             tab.add_message (primary_msg, e.message, MessageType.ERROR);
         }
+        
+        //Updates the structure at the loading of the document.
+        get_structure();
     }
 
     public void set_contents (string contents)
