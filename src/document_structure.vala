@@ -86,8 +86,8 @@ public class DocumentStructure : GLib.Object
 		_label_completion_choices.add(c);
 	}
 	
-	//Returns the path of the enclosing directory for this document.
-	//Used to filter the completion choices.
+	// Returns the path of the enclosing directory for this document.
+	// Used to filter the completion choices.
 	public string find_directory()
 	{
 		string path = _doc.location.get_parse_name();
@@ -97,9 +97,9 @@ public class DocumentStructure : GLib.Object
 		return dir;
 	}
 	
-	//Updates the label completion choices of the completion provider, for this document.
+	// Updates the label completion choices of the completion provider, for this document.
 	public void update_label_completion_choices_from_file()
-	{		
+	{
 		string file_path = _doc.location.get_parse_name();
 		
 		if(!provider.get_labels_from_files().has_key(file_path))

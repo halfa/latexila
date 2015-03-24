@@ -261,7 +261,6 @@ public class DocumentTab : Grid
 
     private bool view_focused_in ()
     {
-        stdout.printf("New focus on %s !\n", get_name());
         /* check if the document has been externally modified */
 
         // we already asked the user
@@ -303,7 +302,7 @@ public class DocumentTab : Grid
             });
         }
 
-        /* Switch global completion context to current document by refreshing the document structure*/ 
+        /* Switch global completion context to current document by refreshing the document structure */ 
         document.get_structure().notify_label_changed();
         return false;
     }

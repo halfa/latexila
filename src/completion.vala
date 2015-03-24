@@ -230,8 +230,8 @@ public class CompletionProvider : GLib.Object, SourceCompletionProvider
     {
         TextIter iter;
 		
-		//If the label completion choices were modified, even for other projects, 
-		//updates the completion choices for the \ref command.
+		// If the label completion choices were modified, even for other projects, 
+		// updates the completion choices for the \ref command.
 		if(_labels_modified)
 			update_label_completion_choices();
 		
