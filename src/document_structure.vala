@@ -69,14 +69,17 @@ public class DocumentStructure : GLib.Object
 
 	public void drop_label_completion_choices()
 	{
-		//Notifies the CompletionProvider that the label completion choices
-		//are being updated.
-		provider.set_labels_modified(true);
-		provider.set_last_dir(find_directory());
 		_label_completion_choices.clear();
 	}
-	
-	public void add_label_completion_choice(string content)
+    
+	/* Notifies the provider that it needs to update the label completion choices */
+    public void notify_label_changed()
+    {
+        provider.set_labels_modified(true);
+        provider.set_last_dir(find_directory());
+    }
+
+    public void add_label_completion_choice(string content)
 	{
 		CompletionProvider.CompletionChoice c = CompletionProvider.CompletionChoice();
 		c.name = content;
@@ -165,6 +168,7 @@ public class DocumentStructure : GLib.Object
     {
 		//Reset of the label completion choices for this document.
 		drop_label_completion_choices();
+        notify_label_changed();
 		
         if (_measure_parsing_time)
         {
