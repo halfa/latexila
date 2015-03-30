@@ -64,6 +64,27 @@ public class Document : Gtk.SourceBuffer
             new_file = false;
             cursor_moved ();
         });
+        
+        if (_chars_regex != null)
+            return;
+
+        try
+        {
+            _chars_regex = new Regex ("\\\\|%");
+
+            _comment_regex = new Regex ("^(?P<type>TODO|FIXME)\\s+:?\\s*(?P<text>.*)$",
+                RegexCompileFlags.OPTIMIZE);
+
+            // Stop at the first argument, which can be optional (a '[').
+            // To find the first non-optional argument, it's more robust to do it
+            // character by character.
+            _command_name_regex = new Regex ("^(?P<name>[a-z]+\\*?)\\s*(\\[|{)",
+                RegexCompileFlags.OPTIMIZE);
+        }
+        catch (RegexError e)
+        {
+            warning ("Structure: %s", e.message);
+        }
     }
 
     public new bool get_modified ()
@@ -90,10 +111,10 @@ public class Document : Gtk.SourceBuffer
         });
     }
 
-    public void load (File location)
+    public void load (File location, bool parse_related)
     {
         this.location = location;
-
+		
         try
         {
             uint8[] chars;
@@ -123,8 +144,12 @@ public class Document : Gtk.SourceBuffer
             tab.add_message (primary_msg, e.message, MessageType.ERROR);
         }
         
-        //Updates the structure at the loading of the document.
-        get_structure();
+        // parses the document for labels, and also the tex files from the same directory if asked.
+        if(parse_related) {
+			parse_related_documents();
+		} else {
+			parse();
+		}
     }
 
     public void set_contents (string contents)
@@ -222,10 +247,12 @@ public class Document : Gtk.SourceBuffer
                 infobar.add_ok_button ();
             }
         }
+        // parsing for labels on saving, to keep the completion up-to-date
+        parse();
     }
 
     private string to_utf8 (string text) throws ConvertError
-    {
+    {	
         foreach (string charset in Encodings.CHARSETS)
         {
             try
@@ -602,4 +629,480 @@ public class Document : Gtk.SourceBuffer
 
         return true;
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    // Default completion provider shared with the other documents.
+    private CompletionProvider provider = CompletionProvider.get_default();
+	// Contains the labels of the document as strings. Is given to the completion provider.
+	private Gee.HashSet<CompletionProvider.CompletionChoice?> 
+	  _label_completion_choices = new Gee.HashSet<CompletionProvider.CompletionChoice?>();
+    
+    private static Regex? _chars_regex = null;
+    private static Regex? _comment_regex = null;
+    private static Regex? _command_name_regex = null;
+    
+    private static const int ITEM_MAX_LENGTH = 60;
+
+    private static const int MAX_NB_LINES_TO_PARSE = 2000;
+    private int _start_parsing_line = 0;
+    
+    public bool parsing_done { get; private set; default = false; }
+    
+    
+    
+    
+    
+    public void parse ()
+    {
+		// reset
+        parsing_done = false;
+        _start_parsing_line = 0;
+
+        Idle.add (() =>
+        {
+            return parse_impl ();
+        });
+    }
+
+    /*************************************************************************/
+    // Parsing stuff
+
+    // Parse the document. Returns false if finished, true otherwise.
+    private bool parse_impl ()
+    {
+		// Reset of the label completion choices for this document.
+		drop_label_completion_choices();
+        notify_label_changed();
+		
+        // The parsing is done line-by-line.
+        TextIter line_iter;
+        get_iter_at_line (out line_iter, _start_parsing_line);
+
+        int nb_lines_parsed = 0;
+
+        do
+        {
+            // If it's a big document, the parsing is split into several chunks,
+            // so the UI is not frozen.
+            if (nb_lines_parsed == MAX_NB_LINES_TO_PARSE)
+            {
+                _start_parsing_line += MAX_NB_LINES_TO_PARSE;
+                return true;
+            }
+
+            // get the text of the current line
+            string line_text = get_line_contents_at_iter (line_iter);
+
+            // in one line there could be several items
+            int start_index = 0;
+            int line_length = line_text.length;
+            while (start_index < line_length)
+            {
+                StructType? type;
+                string? contents;
+                int? start_match_index;
+                int? end_match_index;
+
+                bool item_found = search_low_level_item (line_text, start_index, out type,
+                    out contents, out start_match_index, out end_match_index);
+
+                if (! item_found)
+                    break;
+
+                TextIter iter = line_iter;
+                iter.set_line_index (start_match_index);
+                start_index = end_match_index;
+            }
+
+            nb_lines_parsed++;
+        }
+        while (line_iter.forward_line ());
+
+		// Updates the label completion choices of the completion provider.
+		update_label_completion_choices_from_file();
+		
+        parsing_done = true;
+        return false;
+    }
+
+    // Search a "low-level" item in 'line'. 
+    // Begin the search at 'start_index'.
+    // Returns true if an item has been found, false otherwise.
+    // With the out arguments we can fetch the information we are intersted in.
+    private bool search_low_level_item (string line, int start_index,
+        out StructType? type, out string? contents,
+        out int? start_match_index, out int? end_match_index)
+    {
+        type = null;
+        contents = null;
+        start_match_index = null;
+        end_match_index = null;
+
+        /* search the character '\' or '%' */
+        MatchInfo match_info;
+        try
+        {
+            _chars_regex.match_full (line, -1, start_index, 0, out match_info);
+        }
+        catch (Error e)
+        {
+            warning ("Structure parsing: chars regex: %s", e.message);
+            return false;
+        }
+
+        while (match_info.matches ())
+        {
+            int after_char_index;
+            if (! match_info.fetch_pos (0, out start_match_index, out after_char_index))
+            {
+                warning ("Structure parsing: position can not be fetched");
+                return false;
+            }
+
+            if (! Utils.char_is_escaped (line, start_match_index))
+            {
+                string char_matched = match_info.fetch (0);
+
+                // search markup (begin with a backslash)
+                if (char_matched == "\\")
+                {
+                    bool markup_found = search_markup (line, after_char_index, out type,
+                        out contents, out end_match_index);
+
+                    if (markup_found)
+                        return true;
+                }
+            }
+
+            try
+            {
+                match_info.next ();
+            }
+            catch (RegexError e)
+            {
+                warning ("Structure parsing: %s", e.message);
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    private bool search_markup (string line, int after_backslash_index,
+        out StructType? type, out string? contents, out int? end_match_index)
+    {
+        type = null;
+        contents = null;
+        end_match_index = null;
+
+        /* get markup name */
+        int? begin_contents_index;
+        string? name = get_markup_name (line, after_backslash_index,
+            out begin_contents_index);
+
+        if (name == null)
+            return false;
+
+        /* simple markup */
+        type = get_markup_type (name);
+        if (type == null)
+            return false;
+
+        contents = get_markup_contents (line, begin_contents_index, out end_match_index);
+        
+        /* test label */
+        if (type == StructType.LABEL) {
+			// For each encountered label, populates the HashSet.
+			add_label_completion_choice(contents);
+		}
+        
+        return contents != null;
+    }
+    
+    // Try to get the markup name (between '\' and '{').
+    private string? get_markup_name (string line, int after_backslash_index,
+        out int? begin_contents_index = null)
+    {
+        begin_contents_index = null;
+
+        /* Get the markup name */
+        string after_backslash_text = line.substring (after_backslash_index);
+
+        MatchInfo match_info;
+        if (! _command_name_regex.match (after_backslash_text, 0, out match_info))
+            return null;
+
+        int pos;
+        match_info.fetch_pos (0, null, out pos);
+        int begin_first_arg_index = after_backslash_index + pos;
+
+        string markup_name = match_info.fetch_named ("name");
+
+        /* Search begin_contents_index */
+        if (search_firt_non_optional_arg (line, begin_first_arg_index - 1,
+            out begin_contents_index))
+        {
+            return markup_name;
+        }
+
+        return null;
+    }
+   
+    private StructType? get_markup_type (string markup_name)
+    {
+        switch (markup_name)
+        {
+            case "part":
+            case "part*":
+                return StructType.PART;
+
+            case "chapter":
+            case "chapter*":
+                return StructType.CHAPTER;
+
+            case "section":
+            case "section*":
+                return StructType.SECTION;
+
+            case "subsection":
+            case "subsection*":
+                return StructType.SUBSECTION;
+
+            case "subsubsection":
+            case "subsubsection*":
+                return StructType.SUBSUBSECTION;
+
+            case "paragraph":
+            case "paragraph*":
+                return StructType.PARAGRAPH;
+
+            case "subparagraph":
+            case "subparagraph*":
+                return StructType.SUBPARAGRAPH;
+
+            case "label":
+                return StructType.LABEL;
+
+            case "input":
+            case "include":
+                return StructType.INCLUDE;
+
+            case "includegraphics":
+                return StructType.IMAGE;
+
+            case "caption":
+                return StructType.CAPTION;
+
+            default:
+                return null;
+        }
+    }
+
+    // Get the contents between '{' and the corresponding '}'.
+    private string? get_markup_contents (string line, int begin_contents_index,
+        out int? end_match_index)
+    {
+        end_match_index = null;
+
+        int brace_level = 0;
+        int cur_index = begin_contents_index;
+
+        while (true)
+        {
+            int next_index = cur_index;
+            unichar cur_char;
+            bool end = ! line.get_next_char (ref next_index, out cur_char);
+
+            if (cur_char == '{' && ! Utils.char_is_escaped (line, cur_index))
+                brace_level++;
+
+            else if (cur_char == '}' && ! Utils.char_is_escaped (line, cur_index))
+            {
+                if (brace_level > 0)
+                    brace_level--;
+
+                // found!
+                else
+                {
+                    string contents = line[begin_contents_index : cur_index];
+
+                    // but empty
+                    if (contents == "")
+                        return null;
+
+                    end_match_index = next_index;
+
+                    return contents;
+                }
+            }
+
+            if (end)
+                return null;
+
+            cur_index = next_index;
+        }
+    }
+
+    // line[start_index] must be equal to '{' or '['
+    private bool search_firt_non_optional_arg (string line, int start_index,
+        out int begin_contents_index)
+    {
+        begin_contents_index = 0;
+
+        int cur_index = start_index;
+        bool in_optional_arg = false;
+        int additional_bracket_level = 0;
+
+        while (true)
+        {
+            int next_index = cur_index;
+            unichar cur_char;
+            bool end = ! line.get_next_char (ref next_index, out cur_char);
+
+            if (in_optional_arg)
+            {
+                switch (cur_char)
+                {
+                    case ']':
+                        if (! Utils.char_is_escaped (line, cur_index))
+                        {
+                            if (0 < additional_bracket_level)
+                                additional_bracket_level--;
+                            else
+                                in_optional_arg = false;
+                        }
+                        break;
+
+                    case '[':
+                        if (! Utils.char_is_escaped (line, cur_index))
+                            additional_bracket_level++;
+                        break;
+                }
+            }
+
+            // not in an argument
+            else
+            {
+                switch (cur_char)
+                {
+                    case '{':
+                        begin_contents_index = next_index;
+                        return true;
+
+                    case '[':
+                        in_optional_arg = true;
+                        break;
+
+                    case ' ':
+                    case '\t':
+                        break;
+
+                    default:
+                        return false;
+                }
+            }
+
+            if (end)
+                return false;
+
+            cur_index = next_index;
+        }
+    }
+
+    
+    private string get_line_contents_at_iter (TextIter iter)
+    {
+        TextIter begin_line = iter;
+        begin_line.set_line_offset (0);
+
+        TextIter end_line = iter;
+        if (! iter.ends_line ())
+            end_line.forward_to_line_end ();
+
+        TextBuffer buffer = iter.get_buffer ();
+        return buffer.get_text (begin_line, end_line, false);
+    }
+
+    
+    
+    
+    
+      
+    
+    public void drop_label_completion_choices()
+	{
+		_label_completion_choices.clear();
+	}
+	
+	// Notifies the provider that it needs to update the label completion choices
+    public void notify_label_changed()
+    {
+        provider.set_labels_modified(true);
+        provider.set_last_dir(find_directory());
+    }
+
+    public void add_label_completion_choice(string content)
+	{
+		CompletionProvider.CompletionChoice c = CompletionProvider.CompletionChoice();
+		c.name = content;
+		_label_completion_choices.add(c);
+	}
+	
+	// Returns the path of the enclosing directory for this document.
+	// Used to filter the completion choices.
+	public string find_directory()
+	{
+		string path = location.get_parse_name();
+		string base_name = location.get_basename();
+		string dir = path.replace("/"+base_name, "");
+		
+		return dir;
+	}
+	
+	// updates the label completion choices of the completion provider, for this document.
+	public void update_label_completion_choices_from_file()
+	{
+		string file_path = location.get_parse_name();
+		
+		if(!already_parsed(file_path))
+		{
+			provider.get_labels_from_files().@set(file_path, _label_completion_choices);
+		} else {
+			provider.get_labels_from_files()[file_path] = _label_completion_choices;
+		}
+	}
+	
+    // used to check if the specified document has already been parsed
+    public bool already_parsed(string file_path) {
+		return provider.get_labels_from_files().has_key(file_path);
+	}
+	
+    public void parse_related_documents() {
+		
+		File dir = location.get_parent();
+		
+		try {
+			FileEnumerator enumerator = dir.enumerate_children(
+				"standard::*",
+				FileQueryInfoFlags.NOFOLLOW_SYMLINKS, 
+				null);
+			FileInfo info = null;
+			
+			while(((info = enumerator.next_file(null)) != null)) {
+				Document doc = new Document();
+				File child = enumerator.get_child(info);
+				string file_path = child.get_parse_name();
+				if(file_path.has_suffix(".tex") && (!already_parsed(file_path)))
+					doc.load(child, false);
+			}
+		} catch (Error e) {
+			warning ("%s", e.message);
+		}
+	}
 }

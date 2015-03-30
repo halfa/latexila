@@ -118,7 +118,9 @@ public class DocumentTab : Grid
     public DocumentTab.from_location (File location)
     {
         this ();
-        document.load (location);
+        // loading the document, and parsing the other tex files of the same
+		// directory for labels.
+        document.load (location, true);
     }
 
     public DocumentTab.with_view (DocumentView view)
@@ -293,7 +295,9 @@ public class DocumentTab : Grid
             {
                 if (response_id == ResponseType.OK)
                 {
-                    document.load (document.location);
+					// loading the document, and parsing the other tex files of the same
+					// directory for labels.
+                    document.load (document.location, true);
                     ask_if_externally_modified = false;
                 }
 
@@ -303,7 +307,7 @@ public class DocumentTab : Grid
         }
 
         /* Switch global completion context to current document by refreshing the document structure */ 
-        document.get_structure().notify_label_changed();
+        document.notify_label_changed();
         return false;
     }
 
