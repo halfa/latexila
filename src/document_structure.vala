@@ -87,9 +87,9 @@ public class DocumentStructure : GLib.Object
         }
     }
 
-	public void parse ()
-    {	
-		// reset
+    public void parse ()
+    {    
+        // reset
         parsing_done = false;
         _model = new StructureModel ();
         _last_env_data = null;
@@ -180,7 +180,7 @@ public class DocumentStructure : GLib.Object
             _timer.reset ();
         }
 
-		parsing_done = true;
+    parsing_done = true;
         return false;
     }
 

@@ -114,7 +114,7 @@ public class Document : Gtk.SourceBuffer
     public void load (File location, bool parse_related)
     {
         this.location = location;
-		
+        
         try
         {
             uint8[] chars;
@@ -146,10 +146,10 @@ public class Document : Gtk.SourceBuffer
         
         // parses the document for labels, and also the tex files from the same directory if asked.
         if(parse_related) {
-			parse_related_documents();
-		} else {
-			parse();
-		}
+            parse_related_documents ();
+        } else {
+            parse ();
+        }
     }
 
     public void set_contents (string contents)
@@ -252,7 +252,7 @@ public class Document : Gtk.SourceBuffer
     }
 
     private string to_utf8 (string text) throws ConvertError
-    {	
+    {        
         foreach (string charset in Encodings.CHARSETS)
         {
             try
@@ -629,19 +629,12 @@ public class Document : Gtk.SourceBuffer
 
         return true;
     }
-    
-    
-    
-    
-    
-    
-    
-    
+
     // Default completion provider shared with the other documents.
     private CompletionProvider provider = CompletionProvider.get_default();
-	// Contains the labels of the document as strings. Is given to the completion provider.
-	private Gee.HashSet<CompletionProvider.CompletionChoice?> 
-	  _label_completion_choices = new Gee.HashSet<CompletionProvider.CompletionChoice?>();
+        // Contains the labels of the document as strings. Is given to the completion provider.
+        private Gee.HashSet<CompletionProvider.CompletionChoice?> 
+          _label_completion_choices = new Gee.HashSet<CompletionProvider.CompletionChoice?>();
     
     private static Regex? _chars_regex = null;
     private static Regex? _comment_regex = null;
@@ -660,7 +653,7 @@ public class Document : Gtk.SourceBuffer
     
     public void parse ()
     {
-		// reset
+        // reset
         parsing_done = false;
         _start_parsing_line = 0;
 
@@ -676,10 +669,10 @@ public class Document : Gtk.SourceBuffer
     // Parse the document. Returns false if finished, true otherwise.
     private bool parse_impl ()
     {
-		// Reset of the label completion choices for this document.
-		drop_label_completion_choices();
-        notify_label_changed();
-		
+        // Reset of the label completion choices for this document.
+        drop_label_completion_choices ();
+        notify_label_changed ();
+        
         // The parsing is done line-by-line.
         TextIter line_iter;
         get_iter_at_line (out line_iter, _start_parsing_line);
@@ -724,9 +717,9 @@ public class Document : Gtk.SourceBuffer
         }
         while (line_iter.forward_line ());
 
-		// Updates the label completion choices of the completion provider.
-		update_label_completion_choices_from_file();
-		
+        // Updates the label completion choices of the completion provider.
+        update_label_completion_choices_from_file ();
+        
         parsing_done = true;
         return false;
     }
@@ -818,9 +811,9 @@ public class Document : Gtk.SourceBuffer
         
         /* test label */
         if (type == StructType.LABEL) {
-			// For each encountered label, populates the HashSet.
-			add_label_completion_choice(contents);
-		}
+            // For each encountered label, populates the HashSet.
+            add_label_completion_choice (contents);
+        }
         
         return contents != null;
     }
@@ -1035,74 +1028,81 @@ public class Document : Gtk.SourceBuffer
     
       
     
-    public void drop_label_completion_choices()
-	{
-		_label_completion_choices.clear();
-	}
-	
-	// Notifies the provider that it needs to update the label completion choices
-    public void notify_label_changed()
+    public void drop_label_completion_choices ()
     {
-        provider.set_labels_modified(true);
-        provider.set_last_dir(find_directory());
+        _label_completion_choices.clear ();
+    }
+        
+    // Notifies the provider that it needs to update the label completion choices
+    public void notify_label_changed ()
+    {
+        provider.set_labels_modified (true);
+        provider.set_last_dir (find_directory ());
     }
 
-    public void add_label_completion_choice(string content)
-	{
-		CompletionProvider.CompletionChoice c = CompletionProvider.CompletionChoice();
-		c.name = content;
-		_label_completion_choices.add(c);
-	}
-	
-	// Returns the path of the enclosing directory for this document.
-	// Used to filter the completion choices.
-	public string find_directory()
-	{
-		string path = location.get_parse_name();
-		string base_name = location.get_basename();
-		string dir = path.replace("/"+base_name, "");
-		
-		return dir;
-	}
-	
-	// updates the label completion choices of the completion provider, for this document.
-	public void update_label_completion_choices_from_file()
-	{
-		string file_path = location.get_parse_name();
-		
-		if(!already_parsed(file_path))
-		{
-			provider.get_labels_from_files().@set(file_path, _label_completion_choices);
-		} else {
-			provider.get_labels_from_files()[file_path] = _label_completion_choices;
-		}
-	}
-	
-    // used to check if the specified document has already been parsed
-    public bool already_parsed(string file_path) {
-		return provider.get_labels_from_files().has_key(file_path);
-	}
-	
-    public void parse_related_documents() {
-		
-		File dir = location.get_parent();
-		
-		try {
-			FileEnumerator enumerator = dir.enumerate_children(
-				"standard::*",
-				FileQueryInfoFlags.NOFOLLOW_SYMLINKS, 
-				null);
-			FileInfo info = null;
-			
-			while(((info = enumerator.next_file(null)) != null)) {
-				Document doc = new Document();
-				File child = enumerator.get_child(info);
-				string file_path = child.get_parse_name();
-				if(file_path.has_suffix(".tex") && (!already_parsed(file_path)))
-					doc.load(child, false);
-			}
-		} catch (Error e) {
-			warning ("%s", e.message);
-		}
-	}
+    public void add_label_completion_choice (string content)
+    {
+            CompletionProvider.CompletionChoice c = CompletionProvider.CompletionChoice ();
+            c.name = content;
+            _label_completion_choices.add (c);
+    }
+        
+    // Returns the path of the enclosing directory for this document.
+    // Used to filter the completion choices.
+    public string find_directory ()
+    {
+        string path = location.get_parse_name ();
+        string base_name = location.get_basename ();
+        string dir = path.replace ("/"+base_name, "");
+        
+        return dir;
+    }
+        
+    // updates the label completion choices of the completion provider, for this document.
+    public void update_label_completion_choices_from_file ()
+    {
+        string file_path = location.get_parse_name ();
+        
+        if (! already_parsed (file_path))
+        {
+            provider.get_labels_from_files ().@set (file_path, _label_completion_choices);
+        }
+        else
+        {
+            provider.get_labels_from_files ()[file_path] = _label_completion_choices;
+        }
+    }
+        
+    // Used to check if the specified document has already been parsed
+    public bool already_parsed (string file_path) {
+        return provider.get_labels_from_files ().has_key (file_path);
+        }
+        
+    public void parse_related_documents () {
+        
+        File dir = location.get_parent ();
+        
+        try {
+            FileEnumerator enumerator = dir.enumerate_children
+            (
+                "standard::*",
+                FileQueryInfoFlags.NOFOLLOW_SYMLINKS, 
+                null
+            );
+            FileInfo info = null;
+                
+            while (((info = enumerator.next_file (null)) != null))
+            {
+                Document doc = new Document ();
+                File child = enumerator.get_child (info);
+                
+                string file_path = child.get_parse_name ();
+
+                if (file_path.has_suffix (".tex") && (! already_parsed (file_path)))
+                    doc.load (child, false);
+            }
+        } catch (Error e) {
+            warning ("%s", e.message);
+        }
+    }
 }
